@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hustler Earnings</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      background: #f0f2f5;
+    }
+    h1, h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .hidden {
+      display: none;
+    }
+    button {
+      background-color: #27ae60;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      margin: 10px 0;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    button:disabled {
+      background-color: #95a5a6;
+      cursor: not-allowed;
+    }
+    input, label {
+      display: block;
+      width: 100%;
+      margin: 10px 0 5px 0;
+    }
+    input[type="text"], input[type="password"], input[type="email"], input[type="number"] {
+      padding: 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    .status {
+      margin-top: 10px;
+      padding: 10px;
+      background: #dff0d8;
+      border: 1px solid #3c763d;
+      border-radius: 4px;
+      color: #3c763d;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hustler Earnings</h1>
+
+  <div id="register-section">
+    <h2>Register</h2>
+    <label for="reg-email">Email:</label>
+    <input type="email" id="reg-email" placeholder="Enter email" required />
+    <label for="reg-password">Password:</label>
+    <input type="password" id="reg-password" placeholder="Enter password" required />
+    <button id="register-btn">Register</button>
+    <p>Already registered? <a href="#" id="to-login">Login here</a></p>
+    <div id="reg-msg" class="status hidden"></div>
+  </div>
+
+  <div id="login-section" class="hidden">
+    <h2>Login</h2>
+    <label for="login-email">Email:</label>
+    <input type="email" id="login-email" placeholder="Enter email" required />
+    <label for="login-password">Password:</label>
+    <input type="password" id="login-password" placeholder="Enter password" required />
+    <button id="login-btn">Login</button>
+    <p>New user? <a href="#" id="to-register">Register here</a></p>
+    <div id="login-msg" class="status hidden"></div>
+  </div>
+
+  <div id="dashboard-section" class="hidden">
+    <h2>Welcome, <span id="user-email"></span></h2>
+    <p>Coins: <span id="user-coins">0</span></p>
+    <p>Ads watched today: <span id="ads-watched">0</span> / 40</p>
+    <button id="watch-ad-btn">Watch Ad and Earn 2 Coins</button>
+    <button id="logout-btn" style="background: #e74c3c;">Logout</button>
+
+    <h3>Withdraw Coins</h3>
+    <label for="withdraw-coins">Enter coins to withdraw:</label>
+    <input type="number" id="withdraw-coins" min="10" step="10" placeholder="Minimum 10 coins" />
+    <button id="withdraw-btn">Withdraw</button>
+    <div id="withdraw-msg" class="status hidden"></div>
+  </div>
+
+  <script>
+    // Utility for localStorage user data (very basic, for demo only)
+    const STORAGE_KEY = 'hustlerEarningsUsers';
+    let currentUser = null;
+
+    function saveUsers(users) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+    }
+    function getUsers() {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+    }
+
+    function showSection(id) {
+      ['register-section', 'login-section', 'dashboard-section'].forEach(sec => {
+        document.getElementById(sec).classList.add('hidden');
+      });
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    // Register
+    document.getElementById('register-btn').addEventListener('click', () => {
+      const email = document.getElementById('reg-email').value.trim();
+      const pass = document.getElementById('reg-password').value.trim();
+      const msg = document.getElementById('reg-msg');
+      msg.classList.add('hidden');
+
+      if (!email || !pass) {
+        msg.textContent = 'Please enter email and password.';
+        msg.classList.remove('hidden');
+        return;
+      }
+      let users = getUsers();
+      if (users[email]) {
+        msg.textContent = 'Email already registered. Please login.';
+        msg.classList.remove('hidden');
+        return;
+      }
+      users[email] = {
+        password: pass,
+        coins: 0,
+        adsWatchedToday: 0,
+        lastWatchDate: ''
+      };
+      saveUsers(users);
+      msg.textContent = 'Registration successful! You can login now.';
+      msg.classList.remove('hidden');
+    });
+
+    // Navigation links
+    document.getElementById('to-login').addEventListener('click', () => showSection('login-section'));
+    document.getElementById('to-register').addEventListener('click', () => showSection('register-section'));
+
+    // Login
+    document.getElementById('login-btn').addEventListener('click', () => {
+      const email = document.getElementById('login-email').value.trim();
+      const pass = document.getElementById('login-password').value.trim();
+      const msg = document.getElementById('login-msg');
+      msg.classList.add('hidden');
+
+      if (!email || !pass) {
+        msg.textContent = 'Please enter email and password.';
+        msg.classList.remove('hidden');
+        return;
+      }
+      let users = getUsers();
+      if (!users[email] || users[email].password !== pass) {
+        msg.textContent = 'Invalid email or password.';
+        msg.classList.remove('hidden');
+        return;
+      }
+      currentUser = email;
+      showSection('dashboard-section');
+      updateDashboard();
+    });
+
+    // Logout
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      currentUser = null;
+      showSection('login-section');
+    });
+
+    // Update dashboard info
+    function updateDashboard() {
+      let users = getUsers();
+      let user = users[currentUser];
+      // Reset ads watched if new day
+      let today = new Date().toISOString().slice(0, 10);
+      if (user.lastWatchDate !== today) {
+        user.adsWatchedToday = 0;
+        user.lastWatchDate = today;
+        saveUsers(users);
+      }
+      document.getElementById('user-email').textContent = currentUser;
+      document.getElementById('user-coins').textContent = user.coins;
+      document.getElementById('ads-watched').textContent = user.adsWatchedToday;
+    }
+
+    // Watch ad button (simulate ad watching)
+    document.getElementById('watch-ad-btn').addEventListener('click', () => {
+      let users = getUsers();
+      let user = users[currentUser];
+      let today = new Date().toISOString().slice(0, 10);
+      if (user.lastWatchDate !== today) {
+        user.adsWatchedToday = 0;
+        user.lastWatchDate = today;
+      }
+      if (user.adsWatchedToday >= 40) {
+        alert('Daily ad watch limit reached.');
+        return;
+      }
+      // Simulate ad watch
+      alert('Thanks for watching the ad! You earned 2 coins.');
+      user.coins += 2;
+      user.adsWatchedToday += 1;
+      saveUsers(users);
+      updateDashboard();
+    });
+
+    // Withdraw form
+    document.getElementById('withdraw-btn').addEventListener('click', () => {
+      let coinsToWithdraw = parseInt(document.getElementById('withdraw-coins').value, 10);
+      const msg = document.getElementById('withdraw-msg');
+      msg.classList.add('hidden');
+
+      if (isNaN(coinsToWithdraw) || coinsToWithdraw < 10 || coinsToWithdraw % 10 !== 0) {
+        msg.textContent = 'Enter a valid amount (minimum 10 coins, in multiples of 10).';
+        msg.classList.remove('hidden');
+        return;
+      }
+      let users = getUsers();
+      let user = users[currentUser];
+      if (user.coins < coinsToWithdraw) {
+        msg.textContent = 'Insufficient coins.';
+        msg.classList.remove('hidden');
+        return;
+      }
+
+      // Calculate withdrawal amount and fee
+      let rupees = coinsToWithdraw / 10;
+      let fee = rupees * 0.01;
+      let payout = rupees - fee;
+
+      // For demo, just show withdrawal info
+      alert(`Withdraw request sent!\nWithdraw Amount: ₹${rupees.toFixed(2)}\nFee (1%): ₹${fee.toFixed(2)}\nYou will receive: ₹${payout.toFixed(2)} in your UPI.`);
+
+      user.coins -= coinsToWithdraw;
+      saveUsers(users);
+      updateDashboard();
+      document.getElementById('withdraw-coins').value = '';
+    });
+
+    // On start, show register section
+    showSection('register-section');
+  </script>
+</body>
+</html>
